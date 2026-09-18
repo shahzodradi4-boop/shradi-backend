@@ -40,7 +40,7 @@ app.add_middleware(
 # Veb-versiya: iPhone/Android'da o'rnatishsiz, to'g'ridan-to'g'ri Safari/Chrome
 # brauzerida ishlatish uchun. Bir xil manzilda (bir xil port) ishlagani uchun
 # CORS muammosi bo'lmaydi — sahifa ham, API ham shu serverdan xizmat qiladi.
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+STATIC_DIR = os.path.dirname(__file__) or "."
 app.mount("/app", StaticFiles(directory=STATIC_DIR, html=True), name="web-app")
 
 # Model faqat bir marta, server ishga tushganda yuklanadi (tezlik uchun).
