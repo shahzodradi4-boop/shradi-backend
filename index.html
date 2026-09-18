@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Shradi</title>
+<style>
+  :root {
+    --bg: #121212;
+    --card: #1e1b26;
+    --primary: #7C4DFF;
+    --primary-dark: #5e35d1;
+    --text: #ffffff;
+    --text-dim: #ffffffb3;
+    --text-dimmer: #ffffff70;
+    --danger: #ff6b6b;
+    --success: #4caf50;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .screen { display: none; padding: 24px 20px; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+  .screen.active { display: block; }
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0 20px 0;
+  }
+  .topbar button.back {
+    background: none; border: none; color: var(--text); font-size: 20px; padding: 4px 8px; cursor: pointer;
+  }
+  .topbar h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  h1.logo { font-size: 34px; text-align: center; margin: 16px 0 4px 0; }
+  .subtitle { text-align: center; color: var(--text-dim); margin-bottom: 40px; font-size: 15px; line-height: 1.4; }
+  .icon-big { display: block; margin: 0 auto 16px auto; width: 64px; height: 64px; }
+  .btn {
+    display: block; width: 100%; padding: 16px; border-radius: 16px; border: none;
+    font-size: 17px; font-weight: 600; cursor: pointer; margin-bottom: 12px;
+    background: var(--primary); color: white;
+  }
+  .btn:active { background: var(--primary-dark); }
+  .btn:disabled { opacity: 0.5; }
+  .btn.outline { background: transparent; border: 1.5px solid #ffffff40; color: var(--text); }
+  .btn.small { padding: 10px; font-size: 14px; }
+  input[type=file] { display: none; }
+  .card {
+    background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 16px;
+  }
+  .section-title { color: var(--text-dimmer); font-size: 13px; font-weight: 600; margin: 0 0 8px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sub-line {
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #ffffff14;
+  }
+  .sub-line:last-child { border-bottom: none; }
+  .sub-time { color: var(--text-dimmer); font-size: 11px; min-width: 36px; padding-top: 10px; }
+  .sub-text {
+    flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px;
+    padding: 8px; border-radius: 8px; background: #ffffff0d;
+  }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; }
+  .toggle-row .label { font-size: 15px; }
+  .toggle-row .desc { font-size: 12px; color: var(--text-dimmer); margin-top: 2px; }
+  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--primary); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 8px 16px; border-radius: 20px; border: 1px solid #ffffff30; color: var(--text-dim);
+    font-size: 14px; cursor: pointer; background: transparent;
+  }
+  .chip.selected { background: var(--primary); border-color: var(--primary); color: white; }
+  .speed-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .speed-row label { width: 82px; font-size: 14px; }
+  .speed-row input[type=range] { flex: 1; accent-color: var(--primary); }
+  .speed-row .val { width: 42px; text-align: right; font-size: 12px; color: var(--text-dim); }
+  .center { text-align: center; }
+  .spinner {
+    width: 40px; height: 40px; border: 4px solid #ffffff20; border-top-color: var(--primary);
+    border-radius: 50%; margin: 0 auto 16px auto; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-text { color: var(--text-dim); text-align: center; margin-bottom: 24px; }
+  .error-box { color: var(--danger); background: #ff6b6b1a; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 16px; }
+  video { width: 100%; border-radius: 14px; margin-bottom: 16px; background: black; }
+  .check { width: 72px; height: 72px; color: var(--success); display: block; margin: 0 auto 16px auto; }
+</style>
+</head>
+<body>
+
+<!-- 1. BOSH SAHIFA -->
+<div class="screen active" id="screen-home">
+  <div style="padding-top: 60px;">
+    <h1 class="logo">Shradi</h1>
+    <p class="subtitle">Videongizga bir bosishda o'zbekcha subtitr,<br>effekt va rang qo'ying</p>
+    <input type="file" id="fileInput" accept="video/*">
+    <button class="btn" onclick="document.getElementById('fileInput').click()">🎬 Video tanlash</button>
+    <p class="status-text" id="homeStatus" style="display:none;"></p>
+  </div>
+</div>
+
+<!-- 2. SUBTITR EKRANI -->
+<div class="screen" id="screen-subtitle">
+  <div class="topbar"><h1>Subtitr</h1></div>
+  <div id="subtitleLoading" class="center" style="padding-top: 100px;">
+    <div class="spinner"></div>
+    <p class="status-text">Ovoz matnga aylantirilmoqda...<br>Bir necha soniya kuting</p>
+  </div>
+  <div id="subtitleContent" style="display:none;">
+    <div class="card" id="subLinesCard"></div>
+    <button class="btn" onclick="goToEffects()">Davom etish</button>
+  </div>
+  <div id="subtitleError" style="display:none;" class="error-box"></div>
+</div>
+
+<!-- 3. EFFEKTLAR EKRANI -->
+<div class="screen" id="screen-effects">
+  <div class="topbar"><button class="back" onclick="showScreen('screen-subtitle')">←</button><h1>Effektlar</h1></div>
+
+  <p class="section-title">Ovoz</p>
+  <div class="card">
+    <div class="toggle-row">
+      <div>
+        <div class="label">Shovqinni tozalash</div>
+        <div class="desc">Fon shovqinini kamaytiradi</div>
+      </div>
+      <input type="checkbox" id="noiseReduction">
+    </div>
+  </div>
+
+  <p class="section-title">Rang uslubi</p>
+  <div class="card">
+    <div class="chip-row" id="colorChips">
+      <button class="chip selected" data-value="original">Original</button>
+      <button class="chip" data-value="issiq">Issiq</button>
+      <button class="chip" data-value="sovuq">Sovuq</button>
+      <button class="chip" data-value="kontrastli">Kontrastli</button>
+    </div>
+  </div>
+
+  <p class="section-title">Tezlik (speed ramp)</p>
+  <div class="card">
+    <p class="desc" style="margin-top:0;">Videoning har qismiga alohida tezlik bering</p>
+    <div class="speed-row"><label>Boshlanish</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedStart"><span class="val" id="speedStartVal">1.00x</span></div>
+    <div class="speed-row"><label>O'rta</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedMiddle"><span class="val" id="speedMiddleVal">1.00x</span></div>
+    <div class="speed-row"><label>Oxiri</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedEnd"><span class="val" id="speedEndVal">1.00x</span></div>
+  </div>
+  <p class="center"><button class="btn small outline" style="width:auto; display:inline-block; padding:8px 20px;" onclick="resetSpeeds()">Oddiy tezlikka qaytarish</button></p>
+
+  <div style="height: 20px;"></div>
+  <button class="btn" onclick="startRender()">Videoni tayyorlash</button>
+</div>
+
+<!-- 4. EKSPORT EKRANI -->
+<div class="screen" id="screen-export">
+  <div class="topbar"><h1>Tayyor</h1></div>
+  <div id="exportWorking" class="center" style="padding-top: 100px;">
+    <div class="spinner"></div>
+    <p class="status-text" id="exportStatus">Ishlanmoqda...</p>
+  </div>
+  <div id="exportError" style="display:none;" class="error-box"></div>
+  <div id="exportDone" style="display:none;">
+    <svg class="check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    <p class="center" style="font-size:20px; font-weight:bold;">Video tayyor!</p>
+    <video id="resultVideo" controls playsinline></video>
+    <button class="btn" onclick="shareResult()">📤 Saqlash / Ulashish</button>
+    <button class="btn outline" onclick="resetApp()">Yangi video</button>
+  </div>
+</div>
+
+<script>
+const API = ''; // bir xil manzilda ishlaydi (backend shu sahifani ham beradi)
+let originalFile = null;
+let subtitleLines = [];
+let resultBlob = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  originalFile = file;
+  showScreen('screen-subtitle');
+  document.getElementById('subtitleLoading').style.display = 'block';
+  document.getElementById('subtitleContent').style.display = 'none';
+  document.getElementById('subtitleError').style.display = 'none';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('language', 'uz');
+    const res = await fetch(API + '/transcribe', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('Server javobi: ' + res.status);
+    const data = await res.json();
+    subtitleLines = data.segments;
+    renderSubtitleLines();
+    document.getElementById('subtitleLoading').style.display = 'none';
+    document.getElementById('subtitleContent').style.display = 'block';
+  } catch (err) {
+    document.getElementById('subtitleLoading').style.display = 'none';
+    document.getElementById('subtitleError').style.display = 'block';
+    document.getElementById('subtitleError').textContent = 'Xatolik: ' + err.message;
+  }
+});
+
+function renderSubtitleLines() {
+  const card = document.getElementById('subLinesCard');
+  card.innerHTML = '';
+  subtitleLines.forEach((line, i) => {
+    const row = document.createElement('div');
+    row.className = 'sub-line';
+    row.innerHTML = `<div class="sub-time">${line.start.toFixed(1)}s</div>
+      <input class="sub-text" value="${line.text.replace(/"/g,'&quot;')}" data-index="${i}">`;
+    card.appendChild(row);
+  });
+  card.querySelectorAll('.sub-text').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      subtitleLines[e.target.dataset.index].text = e.target.value;
+    });
+  });
+}
+
+function goToEffects() { showScreen('screen-effects'); }
+
+document.getElementById('colorChips').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#colorChips .chip').forEach(c => c.classList.remove('selected'));
+  e.target.classList.add('selected');
+});
+
+['speedStart', 'speedMiddle', 'speedEnd'].forEach(id => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    document.getElementById(id + 'Val').textContent = parseFloat(e.target.value).toFixed(2) + 'x';
+  });
+});
+
+function resetSpeeds() {
+  ['speedStart', 'speedMiddle', 'speedEnd'].forEach(id => {
+    document.getElementById(id).value = 1.0;
+    document.getElementById(id + 'Val').textContent = '1.00x';
+  });
+}
+
+async function startRender() {
+  showScreen('screen-export');
+  document.getElementById('exportWorking').style.display = 'block';
+  document.getElementById('exportDone').style.display = 'none';
+  document.getElementById('exportError').style.display = 'none';
+  const statusEl = document.getElementById('exportStatus');
+
+  const noiseReduction = document.getElementById('noiseReduction').checked;
+  const colorPreset = document.querySelector('#colorChips .chip.selected').dataset.value;
+  const speeds = [
+    parseFloat(document.getElementById('speedStart').value),
+    parseFloat(document.getElementById('speedMiddle').value),
+    parseFloat(document.getElementById('speedEnd').value),
+  ];
+  const hasRamp = speeds.some(s => Math.abs(s - 1.0) > 0.01);
+
+  try {
+    statusEl.textContent = 'Subtitr va effektlar videoga yozilmoqda...';
+    const fd = new FormData();
+    fd.append('file', originalFile);
+    fd.append('segments', JSON.stringify(subtitleLines));
+    fd.append('noise_reduction', noiseReduction);
+    fd.append('color_preset', colorPreset);
+    let res = await fetch(API + '/render', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    let blob = await res.blob();
+
+    if (hasRamp) {
+      statusEl.textContent = "Tezlik (speed ramp) qo'llanmoqda...";
+      const fd2 = new FormData();
+      fd2.append('file', blob, 'video.mp4');
+      fd2.append('speeds', JSON.stringify(speeds));
+      res = await fetch(API + '/speedramp', { method: 'POST', body: fd2 });
+      if (!res.ok) throw new Error(await res.text());
+      blob = await res.blob();
+    }
+
+    resultBlob = blob;
+    const url = URL.createObjectURL(blob);
+    document.getElementById('resultVideo').src = url;
+    document.getElementById('exportWorking').style.display = 'none';
+    document.getElementById('exportDone').style.display = 'block';
+  } catch (err) {
+    document.getElementById('exportWorking').style.display = 'none';
+    document.getElementById('exportError').style.display = 'block';
+    document.getElementById('exportError').textContent = 'Xatolik: ' + err.message;
+  }
+}
+
+async function shareResult() {
+  if (!resultBlob) return;
+  const file = new File([resultBlob], 'shradi_export.mp4', { type: 'video/mp4' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Shradi video' });
+    } catch (e) { /* foydalanuvchi bekor qildi */ }
+  } else {
+    // Zaxira: yuklab olish havolasi
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(resultBlob);
+    a.download = 'shradi_export.mp4';
+    a.click();
+  }
+}
+
+function resetApp() {
+  originalFile = null;
+  subtitleLines = [];
+  resultBlob = null;
+  document.getElementById('fileInput').value = '';
+  showScreen('screen-home');
+}
+</script>
+</body>
+</html>
