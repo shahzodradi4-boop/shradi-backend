@@ -6,27 +6,34 @@
 <title>Kesim</title>
 <style>
   :root {
-    --bg: #121212;
-    --card: #1e1b26;
+    --bg: #0c0b10;
+    --bg2: #121016;
+    --surface: #1a1822;
+    --surface2: #232030;
     --primary: #7C4DFF;
+    --primary2: #536DFE;
     --primary-dark: #5e35d1;
     --text: #ffffff;
     --text-dim: #ffffffb3;
-    --text-dimmer: #ffffff70;
+    --text-dimmer: #ffffff66;
+    --border: #ffffff17;
     --danger: #ff6b6b;
     --success: #4caf50;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
-    padding-bottom: env(safe-area-inset-bottom);
+    overscroll-behavior: none;
   }
   .screen { display: none; padding: 24px 20px; max-width: 480px; margin: 0 auto; min-height: 100vh; }
   .screen.active { display: block; }
+  #screen-edit { padding: 0; height: 100vh; max-width: 480px; margin: 0 auto; overflow: hidden; position: relative; }
+  #screen-edit.active { display: flex; flex-direction: column; }
+
   .topbar {
     display: flex; align-items: center; gap: 12px;
     padding: 8px 0 20px 0;
@@ -35,30 +42,35 @@
     background: none; border: none; color: var(--text); font-size: 20px; padding: 4px 8px; cursor: pointer;
   }
   .topbar h1 { font-size: 18px; margin: 0; font-weight: 600; }
-  h1.logo { font-size: 34px; text-align: center; margin: 16px 0 4px 0; }
+  h1.logo {
+    font-size: 36px; text-align: center; margin: 16px 0 4px 0; font-weight: 800; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff, #cfc3ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
   .subtitle { text-align: center; color: var(--text-dim); margin-bottom: 40px; font-size: 15px; line-height: 1.4; }
   .btn {
     display: block; width: 100%; padding: 16px; border-radius: 16px; border: none;
-    font-size: 17px; font-weight: 600; cursor: pointer; margin-bottom: 12px;
-    background: var(--primary); color: white;
+    font-size: 17px; font-weight: 700; cursor: pointer; margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white;
+    box-shadow: 0 8px 20px -8px #7C4DFF88;
   }
-  .btn:active { background: var(--primary-dark); }
-  .btn:disabled { opacity: 0.5; }
-  .btn.outline { background: transparent; border: 1.5px solid #ffffff40; color: var(--text); }
+  .btn:active { filter: brightness(0.9); }
+  .btn:disabled { opacity: 0.5; box-shadow: none; }
+  .btn.outline { background: transparent; border: 1.5px solid #ffffff30; color: var(--text); box-shadow: none; }
   .btn.small { padding: 10px; font-size: 14px; }
   input[type=file] { display: none; }
   .card {
-    background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 16px;
+    background: var(--surface); border-radius: 14px; padding: 16px; margin-bottom: 16px;
   }
   .section-title { color: var(--text-dimmer); font-size: 13px; font-weight: 600; margin: 0 0 8px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
   .sub-line {
-    display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #ffffff14;
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border);
   }
   .sub-line:last-child { border-bottom: none; }
   .sub-time { color: var(--text-dimmer); font-size: 11px; min-width: 36px; padding-top: 10px; }
   .sub-text {
-    flex: 1; background: transparent; border: none; color: var(--text); font-size: 15px;
-    padding: 8px; border-radius: 8px; background: #ffffff0d;
+    flex: 1; border: none; color: var(--text); font-size: 15px;
+    padding: 10px 12px; border-radius: 10px; background: #ffffff0d;
   }
   .toggle-row { display: flex; justify-content: space-between; align-items: center; }
   .toggle-row .label { font-size: 15px; }
@@ -66,20 +78,14 @@
   input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--primary); flex-shrink: 0; }
   .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
-    padding: 8px 16px; border-radius: 20px; border: 1px solid #ffffff30; color: var(--text-dim);
-    font-size: 14px; cursor: pointer; background: transparent;
+    padding: 9px 16px; border-radius: 20px; border: 1px solid #ffffff26; color: var(--text-dim);
+    font-size: 14px; cursor: pointer; background: #ffffff0a; font-weight: 500;
   }
-  .chip.selected { background: var(--primary); border-color: var(--primary); color: white; }
-  .speed-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .speed-row label { width: 82px; font-size: 14px; }
+  .chip.selected { background: linear-gradient(135deg, var(--primary), var(--primary2)); border-color: transparent; color: white; }
+  .speed-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .speed-row label { width: 90px; font-size: 14px; color: var(--text-dim); }
   .speed-row input[type=range] { flex: 1; accent-color: var(--primary); }
-  .speed-row .val { width: 42px; text-align: right; font-size: 12px; color: var(--text-dim); }
-  .trim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .trim-row label { width: 82px; font-size: 14px; }
-  .trim-row input[type=range] { flex: 1; accent-color: var(--primary); }
-  .trim-row .val { width: 48px; text-align: right; font-size: 12px; color: var(--text-dim); }
-  .trim-bar { position: relative; height: 6px; background: #ffffff20; border-radius: 3px; margin: 4px 0 16px 0; }
-  .trim-bar .fill { position: absolute; height: 100%; background: var(--primary); border-radius: 3px; }
+  .speed-row .val { width: 46px; text-align: right; font-size: 12px; color: var(--text-dim); }
   .center { text-align: center; }
   .spinner {
     width: 40px; height: 40px; border: 4px solid #ffffff20; border-top-color: var(--primary);
@@ -91,6 +97,81 @@
   video { width: 100%; border-radius: 14px; margin-bottom: 16px; background: black; }
   .check { width: 72px; height: 72px; color: var(--success); display: block; margin: 0 auto 16px auto; }
   .link-btn { background: none; border: none; color: var(--primary); font-size: 15px; font-weight: 600; padding: 10px 0; cursor: pointer; }
+
+  /* ===== TAHRIRLASH EKRANI (CapCut uslubida) ===== */
+  .edit-topbar {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px; flex-shrink: 0;
+  }
+  .icon-btn {
+    background: var(--surface); border: none; color: var(--text); width: 36px; height: 36px;
+    border-radius: 11px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .edit-topbar h1 { flex: 1; font-size: 16px; margin: 0; font-weight: 700; }
+  .export-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary2)); border: none; color: #fff;
+    font-weight: 700; font-size: 14px; padding: 9px 18px; border-radius: 12px; cursor: pointer;
+  }
+
+  .preview-wrap {
+    flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+    background: #000; position: relative;
+  }
+  .preview-wrap video { max-width: 100%; max-height: 100%; width: auto; border-radius: 0; margin: 0; }
+
+  .trim-panel { flex-shrink: 0; padding: 10px 16px 2px 16px; }
+  .trim-bar { position: relative; height: 5px; background: #ffffff20; border-radius: 3px; margin-bottom: 10px; }
+  .trim-bar .fill { position: absolute; height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary2)); border-radius: 3px; }
+  .trim-row-mini { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .trim-row-mini label { width: 66px; font-size: 12px; color: var(--text-dimmer); }
+  .trim-row-mini input[type=range] { flex: 1; accent-color: var(--primary); height: 22px; }
+  .trim-row-mini .val { width: 36px; text-align: right; font-size: 11px; color: var(--text-dim); }
+  .trim-preview-link { display: block; text-align: center; font-size: 12px; color: var(--primary); background: none; border: none; padding: 6px 0 4px 0; font-weight: 600; width: 100%; }
+
+  .toolbar-scroll {
+    flex-shrink: 0; display: flex; gap: 2px; overflow-x: auto;
+    padding: 8px 8px calc(10px + env(safe-area-inset-bottom)) 8px;
+    background: var(--bg2); border-top: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .toolbar-scroll::-webkit-scrollbar { display: none; }
+  .tool-btn {
+    flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 13px; border-radius: 14px; color: var(--text-dim); font-size: 11px;
+    background: none; border: none; min-width: 58px; position: relative; cursor: pointer;
+  }
+  .tool-btn .tool-icon {
+    font-size: 21px; width: 40px; height: 40px; border-radius: 12px; background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tool-btn.active .tool-icon { background: linear-gradient(135deg, var(--primary), var(--primary2)); }
+  .tool-btn.active { color: var(--text); }
+  .tool-badge {
+    position: absolute; top: 4px; right: 10px; width: 9px; height: 9px; background: var(--primary);
+    border-radius: 50%; border: 2px solid var(--bg2); display: none;
+  }
+
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: #000000a6; opacity: 0; pointer-events: none;
+    transition: opacity .25s; z-index: 40;
+  }
+  .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+  .bottom-sheet {
+    position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px;
+    background: var(--surface2); border-radius: 22px 22px 0 0;
+    padding: 12px 20px calc(20px + env(safe-area-inset-bottom)) 20px;
+    z-index: 41; max-height: 72vh; overflow-y: auto;
+    transform: translateX(-50%) translateY(100%);
+    transition: transform .28s cubic-bezier(.32,.72,0,1);
+  }
+  .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+  .sheet-handle { width: 38px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 14px auto; }
+  .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .sheet-header span { font-size: 17px; font-weight: 700; }
+  .sheet-header button {
+    background: linear-gradient(135deg, var(--primary), var(--primary2)); border: none; color: #fff;
+    width: 30px; height: 30px; border-radius: 50%; font-size: 15px; cursor: pointer;
+  }
+  .sheet-desc { font-size: 12px; color: var(--text-dimmer); margin: -10px 0 14px 0; }
 </style>
 </head>
 <body>
@@ -105,111 +186,139 @@
   </div>
 </div>
 
-<!-- 2. TAHRIRLASH (MONTAJ) EKRANI — asosiy ekran -->
+<!-- 2. TAHRIRLASH (MONTAJ) EKRANI — CapCut uslubida: video + pastda asboblar paneli -->
 <div class="screen" id="screen-edit">
-  <div class="topbar"><button class="back" onclick="resetApp()">←</button><h1>Tahrirlash</h1></div>
+  <div class="edit-topbar">
+    <button class="icon-btn" onclick="resetApp()">←</button>
+    <h1>Tahrirlash</h1>
+    <button class="export-btn" onclick="startRender()">Eksport</button>
+  </div>
 
-  <video id="editVideo" controls playsinline muted></video>
+  <div class="preview-wrap">
+    <video id="editVideo" controls playsinline muted></video>
+  </div>
 
-  <p class="section-title">✂️ Kesish</p>
-  <div class="card">
-    <p class="desc" style="margin:0 0 12px 0; font-size:12px; color:var(--text-dimmer);">Kerakli qismni ajrating — boshi va oxiri</p>
+  <div class="trim-panel">
     <div class="trim-bar"><div class="fill" id="trimFill"></div></div>
-    <div class="trim-row"><label>Boshlanish</label><input type="range" min="0" max="100" step="0.1" value="0" id="trimStart"><span class="val" id="trimStartVal">0:00</span></div>
-    <div class="trim-row"><label>Tugash</label><input type="range" min="0" max="100" step="0.1" value="100" id="trimEnd"><span class="val" id="trimEndVal">0:00</span></div>
-    <button class="link-btn" onclick="previewTrim()">▶ Kesilgan qismni ko'rish</button>
+    <div class="trim-row-mini"><label>Boshlanish</label><input type="range" min="0" max="100" step="0.1" value="0" id="trimStart"><span class="val" id="trimStartVal">0:00</span></div>
+    <div class="trim-row-mini"><label>Tugash</label><input type="range" min="0" max="100" step="0.1" value="100" id="trimEnd"><span class="val" id="trimEndVal">0:00</span></div>
+    <button class="trim-preview-link" onclick="previewTrim()">▶ Kesilgan qismni ko'rish</button>
   </div>
 
-  <p class="section-title">📝 Subtitr</p>
-  <div class="card">
-    <div class="toggle-row">
-      <div>
-        <div class="label" id="subtitleStatusLabel">Avtomatik subtitr (ixtiyoriy)</div>
-        <div class="desc">Ovozni o'zbekcha matnga aylantirib, videoga yozadi</div>
-      </div>
-      <button class="btn small outline" style="width:auto; margin:0; padding:8px 14px;" id="subtitleActionBtn" onclick="openSubtitleFlow()">Qo'shish</button>
-    </div>
+  <div class="toolbar-scroll">
+    <button class="tool-btn" id="subtitleToolBtn" onclick="openSubtitleFlow()">
+      <span class="tool-icon">📝</span><span>Subtitr</span>
+      <span class="tool-badge" id="subtitleBadge"></span>
+    </button>
+    <button class="tool-btn" id="toolBtnAspect" onclick="openSheet('sheet-aspect', 'toolBtnAspect')">
+      <span class="tool-icon">🖼</span><span>O'lcham</span>
+    </button>
+    <button class="tool-btn" id="toolBtnColor" onclick="openSheet('sheet-color', 'toolBtnColor')">
+      <span class="tool-icon">🎨</span><span>Rang</span>
+    </button>
+    <button class="tool-btn" id="toolBtnAdjust" onclick="openSheet('sheet-adjust', 'toolBtnAdjust')">
+      <span class="tool-icon">🎚</span><span>Sozlash</span>
+    </button>
+    <button class="tool-btn" id="toolBtnText" onclick="openSheet('sheet-text', 'toolBtnText')">
+      <span class="tool-icon">🔤</span><span>Matn</span>
+    </button>
+    <button class="tool-btn" id="toolBtnMusic" onclick="openSheet('sheet-music', 'toolBtnMusic')">
+      <span class="tool-icon">🎵</span><span>Musiqa</span>
+    </button>
+    <button class="tool-btn" id="toolBtnAudio" onclick="openSheet('sheet-audio', 'toolBtnAudio')">
+      <span class="tool-icon">🔊</span><span>Ovoz</span>
+    </button>
+    <button class="tool-btn" id="toolBtnSpeed" onclick="openSheet('sheet-speed', 'toolBtnSpeed')">
+      <span class="tool-icon">⏱</span><span>Tezlik</span>
+    </button>
   </div>
-
-  <p class="section-title">🖼 O'lcham nisbati</p>
-  <div class="card">
-    <div class="chip-row" id="aspectChips">
-      <button class="chip selected" data-value="original">Original</button>
-      <button class="chip" data-value="9:16">9:16</button>
-      <button class="chip" data-value="1:1">1:1</button>
-      <button class="chip" data-value="4:5">4:5</button>
-      <button class="chip" data-value="16:9">16:9</button>
-    </div>
-  </div>
-
-  <p class="section-title">🎨 Rang uslubi</p>
-  <div class="card">
-    <div class="chip-row" id="colorChips">
-      <button class="chip selected" data-value="original">Original</button>
-      <button class="chip" data-value="issiq">Issiq</button>
-      <button class="chip" data-value="sovuq">Sovuq</button>
-      <button class="chip" data-value="kontrastli">Kontrastli</button>
-    </div>
-  </div>
-
-  <p class="section-title">🎚 Sozlash</p>
-  <div class="card">
-    <div class="speed-row"><label>Yorqinlik</label><input type="range" min="-1" max="1" step="0.05" value="0" id="adjBrightness"><span class="val" id="adjBrightnessVal">0</span></div>
-    <div class="speed-row"><label>Kontrast</label><input type="range" min="0" max="2" step="0.05" value="1" id="adjContrast"><span class="val" id="adjContrastVal">1.00</span></div>
-    <div class="speed-row"><label>To'yinganlik</label><input type="range" min="0" max="2" step="0.05" value="1" id="adjSaturation"><span class="val" id="adjSaturationVal">1.00</span></div>
-    <p class="center"><button class="link-btn" onclick="resetAdjust()">Boshlang'ichga qaytarish</button></p>
-  </div>
-
-  <p class="section-title">🔤 Matn qo'shish</p>
-  <div class="card">
-    <input class="sub-text" id="overlayText" placeholder="Videoga matn yozing (ixtiyoriy)" style="width:100%; margin-bottom:12px;">
-    <div class="chip-row" id="textPosChips">
-      <button class="chip" data-value="top">Yuqori</button>
-      <button class="chip selected" data-value="bottom">Past</button>
-      <button class="chip" data-value="middle">O'rta</button>
-    </div>
-  </div>
-
-  <p class="section-title">🎵 Fon musiqasi</p>
-  <div class="card">
-    <input type="file" id="musicInput" accept="audio/*">
-    <div class="toggle-row">
-      <div>
-        <div class="label" id="musicStatusLabel">Musiqa tanlanmagan (ixtiyoriy)</div>
-        <div class="desc">Videoga fon musiqasi qo'shadi</div>
-      </div>
-      <button class="btn small outline" style="width:auto; margin:0; padding:8px 14px;" onclick="document.getElementById('musicInput').click()">Tanlash</button>
-    </div>
-    <div id="musicVolumeRow" style="display:none; margin-top:12px;">
-      <div class="speed-row"><label>Musiqa balandligi</label><input type="range" min="0" max="1.5" step="0.05" value="0.5" id="musicVolume"><span class="val" id="musicVolumeVal">0.50</span></div>
-    </div>
-  </div>
-
-  <p class="section-title">🔊 Ovoz</p>
-  <div class="card">
-    <div class="toggle-row">
-      <div>
-        <div class="label">Shovqinni tozalash</div>
-        <div class="desc">Fon shovqinini kamaytiradi</div>
-      </div>
-      <input type="checkbox" id="noiseReduction">
-    </div>
-  </div>
-
-  <p class="section-title">⏱ Tezlik (speed ramp)</p>
-  <div class="card">
-    <p class="desc" style="margin-top:0; font-size:12px; color:var(--text-dimmer);">Videoning har qismiga alohida tezlik bering</p>
-    <div class="speed-row"><label>Boshlanish</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedStart"><span class="val" id="speedStartVal">1.00x</span></div>
-    <div class="speed-row"><label>O'rta</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedMiddle"><span class="val" id="speedMiddleVal">1.00x</span></div>
-    <div class="speed-row"><label>Oxiri</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedEnd"><span class="val" id="speedEndVal">1.00x</span></div>
-  </div>
-  <p class="center"><button class="btn small outline" style="width:auto; display:inline-block; padding:8px 20px;" onclick="resetSpeeds()">Oddiy tezlikka qaytarish</button></p>
-
-  <div style="height: 12px;"></div>
-  <button class="btn" onclick="startRender()">Videoni tayyorlash</button>
 </div>
 
-<!-- 3. SUBTITR EKRANI (ixtiyoriy, "Qo'shish" bosilganda ochiladi) -->
+<!-- Pastdan chiquvchi panellar (bottom sheets) -->
+<div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSheet()"></div>
+
+<div class="bottom-sheet" id="sheet-aspect">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>🖼 O'lcham nisbati</span><button onclick="closeSheet()">✓</button></div>
+  <div class="chip-row" id="aspectChips">
+    <button class="chip selected" data-value="original">Original</button>
+    <button class="chip" data-value="9:16">9:16</button>
+    <button class="chip" data-value="1:1">1:1</button>
+    <button class="chip" data-value="4:5">4:5</button>
+    <button class="chip" data-value="16:9">16:9</button>
+  </div>
+</div>
+
+<div class="bottom-sheet" id="sheet-color">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>🎨 Rang uslubi</span><button onclick="closeSheet()">✓</button></div>
+  <div class="chip-row" id="colorChips">
+    <button class="chip selected" data-value="original">Original</button>
+    <button class="chip" data-value="issiq">Issiq</button>
+    <button class="chip" data-value="sovuq">Sovuq</button>
+    <button class="chip" data-value="kontrastli">Kontrastli</button>
+  </div>
+</div>
+
+<div class="bottom-sheet" id="sheet-adjust">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>🎚 Sozlash</span><button onclick="closeSheet()">✓</button></div>
+  <div class="speed-row"><label>Yorqinlik</label><input type="range" min="-1" max="1" step="0.05" value="0" id="adjBrightness"><span class="val" id="adjBrightnessVal">0</span></div>
+  <div class="speed-row"><label>Kontrast</label><input type="range" min="0" max="2" step="0.05" value="1" id="adjContrast"><span class="val" id="adjContrastVal">1.00</span></div>
+  <div class="speed-row"><label>To'yinganlik</label><input type="range" min="0" max="2" step="0.05" value="1" id="adjSaturation"><span class="val" id="adjSaturationVal">1.00</span></div>
+  <p class="center" style="margin:0;"><button class="link-btn" onclick="resetAdjust()">Boshlang'ichga qaytarish</button></p>
+</div>
+
+<div class="bottom-sheet" id="sheet-text">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>🔤 Matn qo'shish</span><button onclick="closeSheet()">✓</button></div>
+  <input class="sub-text" id="overlayText" placeholder="Videoga matn yozing (ixtiyoriy)" style="width:100%; margin-bottom:14px;">
+  <div class="chip-row" id="textPosChips">
+    <button class="chip" data-value="top">Yuqori</button>
+    <button class="chip selected" data-value="bottom">Past</button>
+    <button class="chip" data-value="middle">O'rta</button>
+  </div>
+</div>
+
+<div class="bottom-sheet" id="sheet-music">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>🎵 Fon musiqasi</span><button onclick="closeSheet()">✓</button></div>
+  <input type="file" id="musicInput" accept="audio/*">
+  <div class="toggle-row">
+    <div>
+      <div class="label" id="musicStatusLabel">Musiqa tanlanmagan (ixtiyoriy)</div>
+      <div class="desc">Videoga fon musiqasi qo'shadi</div>
+    </div>
+    <button class="btn small outline" style="width:auto; margin:0; padding:8px 14px;" onclick="document.getElementById('musicInput').click()">Tanlash</button>
+  </div>
+  <div id="musicVolumeRow" style="display:none; margin-top:16px;">
+    <div class="speed-row" style="margin-bottom:0;"><label>Balandligi</label><input type="range" min="0" max="1.5" step="0.05" value="0.5" id="musicVolume"><span class="val" id="musicVolumeVal">0.50</span></div>
+  </div>
+</div>
+
+<div class="bottom-sheet" id="sheet-audio">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>🔊 Ovoz</span><button onclick="closeSheet()">✓</button></div>
+  <div class="toggle-row">
+    <div>
+      <div class="label">Shovqinni tozalash</div>
+      <div class="desc">Fon shovqinini kamaytiradi</div>
+    </div>
+    <input type="checkbox" id="noiseReduction">
+  </div>
+</div>
+
+<div class="bottom-sheet" id="sheet-speed">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><span>⏱ Tezlik (speed ramp)</span><button onclick="closeSheet()">✓</button></div>
+  <p class="sheet-desc">Videoning har qismiga alohida tezlik bering</p>
+  <div class="speed-row"><label>Boshlanish</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedStart"><span class="val" id="speedStartVal">1.00x</span></div>
+  <div class="speed-row"><label>O'rta</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedMiddle"><span class="val" id="speedMiddleVal">1.00x</span></div>
+  <div class="speed-row" style="margin-bottom:4px;"><label>Oxiri</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedEnd"><span class="val" id="speedEndVal">1.00x</span></div>
+  <p class="center" style="margin:6px 0 0 0;"><button class="link-btn" onclick="resetSpeeds()">Oddiy tezlikka qaytarish</button></p>
+</div>
+
+<!-- 3. SUBTITR EKRANI (ixtiyoriy, "Subtitr" bosilganda ochiladi) -->
 <div class="screen" id="screen-subtitle">
   <div class="topbar"><button class="back" onclick="showScreen('screen-edit')">←</button><h1>Subtitr</h1></div>
   <div id="subtitleLoading" class="center" style="padding-top: 100px;">
@@ -323,14 +432,14 @@ function previewTrim() {
 }
 
 function updateSubtitleButton() {
-  const btn = document.getElementById('subtitleActionBtn');
-  const label = document.getElementById('subtitleStatusLabel');
+  const toolBtn = document.getElementById('subtitleToolBtn');
+  const badge = document.getElementById('subtitleBadge');
   if (hasSubtitles && subtitleLines.length > 0) {
-    btn.textContent = "Tahrirlash";
-    label.textContent = `Subtitr qo'shildi (${subtitleLines.length} qator)`;
+    toolBtn.classList.add('active');
+    badge.style.display = 'block';
   } else {
-    btn.textContent = "Qo'shish";
-    label.textContent = "Avtomatik subtitr (ixtiyoriy)";
+    toolBtn.classList.remove('active');
+    badge.style.display = 'none';
   }
 }
 
@@ -389,6 +498,23 @@ function confirmSubtitles() {
   hasSubtitles = subtitleLines.length > 0;
   updateSubtitleButton();
   showScreen('screen-edit');
+}
+
+/* ===== Pastdan chiquvchi panellar (bottom sheets) ===== */
+let currentSheetBtn = null;
+function openSheet(sheetId, btnId) {
+  document.querySelectorAll('.bottom-sheet.open').forEach(s => s.classList.remove('open'));
+  document.getElementById(sheetId).classList.add('open');
+  document.getElementById('sheetBackdrop').classList.add('show');
+  if (currentSheetBtn) document.getElementById(currentSheetBtn).classList.remove('active');
+  if (btnId) {
+    document.getElementById(btnId).classList.add('active');
+    currentSheetBtn = btnId;
+  }
+}
+function closeSheet() {
+  document.querySelectorAll('.bottom-sheet.open').forEach(s => s.classList.remove('open'));
+  document.getElementById('sheetBackdrop').classList.remove('show');
 }
 
 document.getElementById('colorChips').addEventListener('click', (e) => {
@@ -455,6 +581,7 @@ function resetSpeeds() {
 }
 
 async function startRender() {
+  closeSheet();
   showScreen('screen-export');
   document.getElementById('exportWorking').style.display = 'block';
   document.getElementById('exportDone').style.display = 'none';
@@ -578,6 +705,7 @@ function resetApp() {
   hasSubtitles = false;
   resultBlob = null;
   musicFile = null;
+  closeSheet();
   document.getElementById('fileInput').value = '';
   document.getElementById('musicInput').value = '';
   document.getElementById('musicStatusLabel').textContent = 'Musiqa tanlanmagan (ixtiyoriy)';
