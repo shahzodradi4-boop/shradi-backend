@@ -131,6 +131,17 @@
     </div>
   </div>
 
+  <p class="section-title">🖼 O'lcham nisbati</p>
+  <div class="card">
+    <div class="chip-row" id="aspectChips">
+      <button class="chip selected" data-value="original">Original</button>
+      <button class="chip" data-value="9:16">9:16</button>
+      <button class="chip" data-value="1:1">1:1</button>
+      <button class="chip" data-value="4:5">4:5</button>
+      <button class="chip" data-value="16:9">16:9</button>
+    </div>
+  </div>
+
   <p class="section-title">🎨 Rang uslubi</p>
   <div class="card">
     <div class="chip-row" id="colorChips">
@@ -138,6 +149,39 @@
       <button class="chip" data-value="issiq">Issiq</button>
       <button class="chip" data-value="sovuq">Sovuq</button>
       <button class="chip" data-value="kontrastli">Kontrastli</button>
+    </div>
+  </div>
+
+  <p class="section-title">🎚 Sozlash</p>
+  <div class="card">
+    <div class="speed-row"><label>Yorqinlik</label><input type="range" min="-1" max="1" step="0.05" value="0" id="adjBrightness"><span class="val" id="adjBrightnessVal">0</span></div>
+    <div class="speed-row"><label>Kontrast</label><input type="range" min="0" max="2" step="0.05" value="1" id="adjContrast"><span class="val" id="adjContrastVal">1.00</span></div>
+    <div class="speed-row"><label>To'yinganlik</label><input type="range" min="0" max="2" step="0.05" value="1" id="adjSaturation"><span class="val" id="adjSaturationVal">1.00</span></div>
+    <p class="center"><button class="link-btn" onclick="resetAdjust()">Boshlang'ichga qaytarish</button></p>
+  </div>
+
+  <p class="section-title">🔤 Matn qo'shish</p>
+  <div class="card">
+    <input class="sub-text" id="overlayText" placeholder="Videoga matn yozing (ixtiyoriy)" style="width:100%; margin-bottom:12px;">
+    <div class="chip-row" id="textPosChips">
+      <button class="chip" data-value="top">Yuqori</button>
+      <button class="chip selected" data-value="bottom">Past</button>
+      <button class="chip" data-value="middle">O'rta</button>
+    </div>
+  </div>
+
+  <p class="section-title">🎵 Fon musiqasi</p>
+  <div class="card">
+    <input type="file" id="musicInput" accept="audio/*">
+    <div class="toggle-row">
+      <div>
+        <div class="label" id="musicStatusLabel">Musiqa tanlanmagan (ixtiyoriy)</div>
+        <div class="desc">Videoga fon musiqasi qo'shadi</div>
+      </div>
+      <button class="btn small outline" style="width:auto; margin:0; padding:8px 14px;" onclick="document.getElementById('musicInput').click()">Tanlash</button>
+    </div>
+    <div id="musicVolumeRow" style="display:none; margin-top:12px;">
+      <div class="speed-row"><label>Musiqa balandligi</label><input type="range" min="0" max="1.5" step="0.05" value="0.5" id="musicVolume"><span class="val" id="musicVolumeVal">0.50</span></div>
     </div>
   </div>
 
@@ -353,6 +397,50 @@ document.getElementById('colorChips').addEventListener('click', (e) => {
   e.target.classList.add('selected');
 });
 
+document.getElementById('aspectChips').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#aspectChips .chip').forEach(c => c.classList.remove('selected'));
+  e.target.classList.add('selected');
+});
+
+document.getElementById('textPosChips').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#textPosChips .chip').forEach(c => c.classList.remove('selected'));
+  e.target.classList.add('selected');
+});
+
+document.getElementById('adjBrightness').addEventListener('input', (e) => {
+  document.getElementById('adjBrightnessVal').textContent = parseFloat(e.target.value).toFixed(2);
+});
+document.getElementById('adjContrast').addEventListener('input', (e) => {
+  document.getElementById('adjContrastVal').textContent = parseFloat(e.target.value).toFixed(2);
+});
+document.getElementById('adjSaturation').addEventListener('input', (e) => {
+  document.getElementById('adjSaturationVal').textContent = parseFloat(e.target.value).toFixed(2);
+});
+
+function resetAdjust() {
+  document.getElementById('adjBrightness').value = 0;
+  document.getElementById('adjBrightnessVal').textContent = '0.00';
+  document.getElementById('adjContrast').value = 1;
+  document.getElementById('adjContrastVal').textContent = '1.00';
+  document.getElementById('adjSaturation').value = 1;
+  document.getElementById('adjSaturationVal').textContent = '1.00';
+}
+
+let musicFile = null;
+document.getElementById('musicInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  musicFile = file || null;
+  document.getElementById('musicStatusLabel').textContent = musicFile
+    ? `Tanlandi: ${musicFile.name}`
+    : 'Musiqa tanlanmagan (ixtiyoriy)';
+  document.getElementById('musicVolumeRow').style.display = musicFile ? 'block' : 'none';
+});
+document.getElementById('musicVolume').addEventListener('input', (e) => {
+  document.getElementById('musicVolumeVal').textContent = parseFloat(e.target.value).toFixed(2);
+});
+
 ['speedStart', 'speedMiddle', 'speedEnd'].forEach(id => {
   document.getElementById(id).addEventListener('input', (e) => {
     document.getElementById(id + 'Val').textContent = parseFloat(e.target.value).toFixed(2) + 'x';
@@ -400,6 +488,7 @@ async function startRender() {
       if (!res.ok) throw new Error(await res.text());
       const blob = await res.blob();
       currentFile = new File([blob], 'trimmed.mp4', { type: 'video/mp4' });
+      // Kesilgandan keyin subtitr vaqt belgilari siljiydi — trimStart'ni ayirib qayta hisoblaymiz
       if (currentSegments.length) {
         currentSegments = currentSegments
           .map(s => ({ start: s.start - trimStart, end: s.end - trimStart, text: s.text }))
@@ -408,12 +497,25 @@ async function startRender() {
       }
     }
 
+    const aspectRatio = document.querySelector('#aspectChips .chip.selected').dataset.value;
+    const textPosition = document.querySelector('#textPosChips .chip.selected').dataset.value;
+    const overlayText = document.getElementById('overlayText').value.trim();
+    const brightness = parseFloat(document.getElementById('adjBrightness').value);
+    const contrast = parseFloat(document.getElementById('adjContrast').value);
+    const saturation = parseFloat(document.getElementById('adjSaturation').value);
+
     statusEl.textContent = 'Subtitr va effektlar videoga yozilmoqda...';
     const fd2 = new FormData();
     fd2.append('file', currentFile);
     fd2.append('segments', JSON.stringify(currentSegments));
     fd2.append('noise_reduction', noiseReduction);
     fd2.append('color_preset', colorPreset);
+    fd2.append('aspect_ratio', aspectRatio);
+    fd2.append('brightness', brightness);
+    fd2.append('contrast', contrast);
+    fd2.append('saturation', saturation);
+    fd2.append('overlay_text', overlayText);
+    fd2.append('overlay_position', textPosition);
     let res2 = await fetch(API + '/render', { method: 'POST', body: fd2 });
     if (!res2.ok) throw new Error(await res2.text());
     let blob2 = await res2.blob();
@@ -426,6 +528,19 @@ async function startRender() {
       const res3 = await fetch(API + '/speedramp', { method: 'POST', body: fd3 });
       if (!res3.ok) throw new Error(await res3.text());
       blob2 = await res3.blob();
+    }
+
+    if (musicFile) {
+      statusEl.textContent = "Fon musiqasi qo'shilmoqda...";
+      const musicVolume = parseFloat(document.getElementById('musicVolume').value);
+      const fd4 = new FormData();
+      fd4.append('file', blob2, 'video.mp4');
+      fd4.append('audio', musicFile);
+      fd4.append('music_volume', musicVolume);
+      fd4.append('original_volume', 1.0);
+      const res4 = await fetch(API + '/mix_audio', { method: 'POST', body: fd4 });
+      if (!res4.ok) throw new Error(await res4.text());
+      blob2 = await res4.blob();
     }
 
     resultBlob = blob2;
@@ -448,6 +563,7 @@ async function shareResult() {
       await navigator.share({ files: [file], title: 'Kesim video' });
     } catch (e) { /* foydalanuvchi bekor qildi */ }
   } else {
+    // Zaxira: yuklab olish havolasi
     const a = document.createElement('a');
     a.href = URL.createObjectURL(resultBlob);
     a.download = 'kesim_export.mp4';
@@ -461,8 +577,16 @@ function resetApp() {
   subtitleLines = [];
   hasSubtitles = false;
   resultBlob = null;
+  musicFile = null;
   document.getElementById('fileInput').value = '';
+  document.getElementById('musicInput').value = '';
+  document.getElementById('musicStatusLabel').textContent = 'Musiqa tanlanmagan (ixtiyoriy)';
+  document.getElementById('musicVolumeRow').style.display = 'none';
+  document.getElementById('overlayText').value = '';
   document.getElementById('editVideo').src = '';
+  document.querySelectorAll('#aspectChips .chip').forEach(c => c.classList.remove('selected'));
+  document.querySelector('#aspectChips .chip[data-value="original"]').classList.add('selected');
+  resetAdjust();
   updateSubtitleButton();
   showScreen('screen-home');
 }
