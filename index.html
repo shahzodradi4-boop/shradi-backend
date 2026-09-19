@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Shradi</title>
+<title>Kesim</title>
 <style>
   :root {
     --bg: #121212;
@@ -37,7 +37,6 @@
   .topbar h1 { font-size: 18px; margin: 0; font-weight: 600; }
   h1.logo { font-size: 34px; text-align: center; margin: 16px 0 4px 0; }
   .subtitle { text-align: center; color: var(--text-dim); margin-bottom: 40px; font-size: 15px; line-height: 1.4; }
-  .icon-big { display: block; margin: 0 auto 16px auto; width: 64px; height: 64px; }
   .btn {
     display: block; width: 100%; padding: 16px; border-radius: 16px; border: none;
     font-size: 17px; font-weight: 600; cursor: pointer; margin-bottom: 12px;
@@ -64,7 +63,7 @@
   .toggle-row { display: flex; justify-content: space-between; align-items: center; }
   .toggle-row .label { font-size: 15px; }
   .toggle-row .desc { font-size: 12px; color: var(--text-dimmer); margin-top: 2px; }
-  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--primary); }
+  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--primary); flex-shrink: 0; }
   .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
     padding: 8px 16px; border-radius: 20px; border: 1px solid #ffffff30; color: var(--text-dim);
@@ -75,6 +74,12 @@
   .speed-row label { width: 82px; font-size: 14px; }
   .speed-row input[type=range] { flex: 1; accent-color: var(--primary); }
   .speed-row .val { width: 42px; text-align: right; font-size: 12px; color: var(--text-dim); }
+  .trim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .trim-row label { width: 82px; font-size: 14px; }
+  .trim-row input[type=range] { flex: 1; accent-color: var(--primary); }
+  .trim-row .val { width: 48px; text-align: right; font-size: 12px; color: var(--text-dim); }
+  .trim-bar { position: relative; height: 6px; background: #ffffff20; border-radius: 3px; margin: 4px 0 16px 0; }
+  .trim-bar .fill { position: absolute; height: 100%; background: var(--primary); border-radius: 3px; }
   .center { text-align: center; }
   .spinner {
     width: 40px; height: 40px; border: 4px solid #ffffff20; border-top-color: var(--primary);
@@ -85,40 +90,58 @@
   .error-box { color: var(--danger); background: #ff6b6b1a; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 16px; }
   video { width: 100%; border-radius: 14px; margin-bottom: 16px; background: black; }
   .check { width: 72px; height: 72px; color: var(--success); display: block; margin: 0 auto 16px auto; }
+  .link-btn { background: none; border: none; color: var(--primary); font-size: 15px; font-weight: 600; padding: 10px 0; cursor: pointer; }
 </style>
 </head>
 <body>
-
 <!-- 1. BOSH SAHIFA -->
 <div class="screen active" id="screen-home">
   <div style="padding-top: 60px;">
-    <h1 class="logo">Shradi</h1>
-    <p class="subtitle">Videongizga bir bosishda o'zbekcha subtitr,<br>effekt va rang qo'ying</p>
+    <h1 class="logo">Kesim</h1>
+    <p class="subtitle">Videongizni kesing, effekt qo'shing —<br>xohlasangiz, o'zbekcha subtitr ham yozadi</p>
     <input type="file" id="fileInput" accept="video/*">
     <button class="btn" onclick="document.getElementById('fileInput').click()">🎬 Video tanlash</button>
     <p class="status-text" id="homeStatus" style="display:none;"></p>
   </div>
 </div>
 
-<!-- 2. SUBTITR EKRANI -->
-<div class="screen" id="screen-subtitle">
-  <div class="topbar"><h1>Subtitr</h1></div>
-  <div id="subtitleLoading" class="center" style="padding-top: 100px;">
-    <div class="spinner"></div>
-    <p class="status-text">Ovoz matnga aylantirilmoqda...<br>Bir necha soniya kuting</p>
-  </div>
-  <div id="subtitleContent" style="display:none;">
-    <div class="card" id="subLinesCard"></div>
-    <button class="btn" onclick="goToEffects()">Davom etish</button>
-  </div>
-  <div id="subtitleError" style="display:none;" class="error-box"></div>
-</div>
+<!-- 2. TAHRIRLASH (MONTAJ) EKRANI — asosiy ekran -->
+<div class="screen" id="screen-edit">
+  <div class="topbar"><button class="back" onclick="resetApp()">←</button><h1>Tahrirlash</h1></div>
 
-<!-- 3. EFFEKTLAR EKRANI -->
-<div class="screen" id="screen-effects">
-  <div class="topbar"><button class="back" onclick="showScreen('screen-subtitle')">←</button><h1>Effektlar</h1></div>
+  <video id="editVideo" controls playsinline muted></video>
 
-  <p class="section-title">Ovoz</p>
+  <p class="section-title">✂️ Kesish</p>
+  <div class="card">
+    <p class="desc" style="margin:0 0 12px 0; font-size:12px; color:var(--text-dimmer);">Kerakli qismni ajrating — boshi va oxiri</p>
+    <div class="trim-bar"><div class="fill" id="trimFill"></div></div>
+    <div class="trim-row"><label>Boshlanish</label><input type="range" min="0" max="100" step="0.1" value="0" id="trimStart"><span class="val" id="trimStartVal">0:00</span></div>
+    <div class="trim-row"><label>Tugash</label><input type="range" min="0" max="100" step="0.1" value="100" id="trimEnd"><span class="val" id="trimEndVal">0:00</span></div>
+    <button class="link-btn" onclick="previewTrim()">▶ Kesilgan qismni ko'rish</button>
+  </div>
+
+  <p class="section-title">📝 Subtitr</p>
+  <div class="card">
+    <div class="toggle-row">
+      <div>
+        <div class="label" id="subtitleStatusLabel">Avtomatik subtitr (ixtiyoriy)</div>
+        <div class="desc">Ovozni o'zbekcha matnga aylantirib, videoga yozadi</div>
+      </div>
+      <button class="btn small outline" style="width:auto; margin:0; padding:8px 14px;" id="subtitleActionBtn" onclick="openSubtitleFlow()">Qo'shish</button>
+    </div>
+  </div>
+
+  <p class="section-title">🎨 Rang uslubi</p>
+  <div class="card">
+    <div class="chip-row" id="colorChips">
+      <button class="chip selected" data-value="original">Original</button>
+      <button class="chip" data-value="issiq">Issiq</button>
+      <button class="chip" data-value="sovuq">Sovuq</button>
+      <button class="chip" data-value="kontrastli">Kontrastli</button>
+    </div>
+  </div>
+
+  <p class="section-title">🔊 Ovoz</p>
   <div class="card">
     <div class="toggle-row">
       <div>
@@ -129,27 +152,31 @@
     </div>
   </div>
 
-  <p class="section-title">Rang uslubi</p>
+  <p class="section-title">⏱ Tezlik (speed ramp)</p>
   <div class="card">
-    <div class="chip-row" id="colorChips">
-      <button class="chip selected" data-value="original">Original</button>
-      <button class="chip" data-value="issiq">Issiq</button>
-      <button class="chip" data-value="sovuq">Sovuq</button>
-      <button class="chip" data-value="kontrastli">Kontrastli</button>
-    </div>
-  </div>
-
-  <p class="section-title">Tezlik (speed ramp)</p>
-  <div class="card">
-    <p class="desc" style="margin-top:0;">Videoning har qismiga alohida tezlik bering</p>
+    <p class="desc" style="margin-top:0; font-size:12px; color:var(--text-dimmer);">Videoning har qismiga alohida tezlik bering</p>
     <div class="speed-row"><label>Boshlanish</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedStart"><span class="val" id="speedStartVal">1.00x</span></div>
     <div class="speed-row"><label>O'rta</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedMiddle"><span class="val" id="speedMiddleVal">1.00x</span></div>
     <div class="speed-row"><label>Oxiri</label><input type="range" min="0.5" max="2.0" step="0.05" value="1.0" id="speedEnd"><span class="val" id="speedEndVal">1.00x</span></div>
   </div>
   <p class="center"><button class="btn small outline" style="width:auto; display:inline-block; padding:8px 20px;" onclick="resetSpeeds()">Oddiy tezlikka qaytarish</button></p>
 
-  <div style="height: 20px;"></div>
+  <div style="height: 12px;"></div>
   <button class="btn" onclick="startRender()">Videoni tayyorlash</button>
+</div>
+
+<!-- 3. SUBTITR EKRANI (ixtiyoriy, "Qo'shish" bosilganda ochiladi) -->
+<div class="screen" id="screen-subtitle">
+  <div class="topbar"><button class="back" onclick="showScreen('screen-edit')">←</button><h1>Subtitr</h1></div>
+  <div id="subtitleLoading" class="center" style="padding-top: 100px;">
+    <div class="spinner"></div>
+    <p class="status-text">Ovoz matnga aylantirilmoqda...<br>Bir necha soniya kuting</p>
+  </div>
+  <div id="subtitleContent" style="display:none;">
+    <div class="card" id="subLinesCard"></div>
+    <button class="btn" onclick="confirmSubtitles()">Tayyor — Tahrirlashga qaytish</button>
+  </div>
+  <div id="subtitleError" style="display:none;" class="error-box"></div>
 </div>
 
 <!-- 4. EKSPORT EKRANI -->
@@ -172,7 +199,9 @@
 <script>
 const API = ''; // bir xil manzilda ishlaydi (backend shu sahifani ham beradi)
 let originalFile = null;
+let videoDuration = 0;
 let subtitleLines = [];
+let hasSubtitles = false;
 let resultBlob = null;
 
 function showScreen(id) {
@@ -180,10 +209,96 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
+function fmtTime(s) {
+  s = Math.max(0, s);
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
 document.getElementById('fileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   originalFile = file;
+  subtitleLines = [];
+  hasSubtitles = false;
+  updateSubtitleButton();
+
+  const url = URL.createObjectURL(file);
+  const videoEl = document.getElementById('editVideo');
+  videoEl.src = url;
+  videoEl.onloadedmetadata = () => {
+    videoDuration = videoEl.duration;
+    const startEl = document.getElementById('trimStart');
+    const endEl = document.getElementById('trimEnd');
+    startEl.max = videoDuration;
+    endEl.max = videoDuration;
+    startEl.value = 0;
+    endEl.value = videoDuration;
+    updateTrimLabels();
+    showScreen('screen-edit');
+  };
+});
+
+function updateTrimLabels() {
+  const start = parseFloat(document.getElementById('trimStart').value);
+  const end = parseFloat(document.getElementById('trimEnd').value);
+  document.getElementById('trimStartVal').textContent = fmtTime(start);
+  document.getElementById('trimEndVal').textContent = fmtTime(end);
+  const fill = document.getElementById('trimFill');
+  if (videoDuration > 0) {
+    fill.style.left = (start / videoDuration * 100) + '%';
+    fill.style.width = Math.max(0, (end - start) / videoDuration * 100) + '%';
+  }
+}
+
+document.getElementById('trimStart').addEventListener('input', (e) => {
+  const end = parseFloat(document.getElementById('trimEnd').value);
+  if (parseFloat(e.target.value) > end - 0.2) e.target.value = Math.max(0, end - 0.2);
+  updateTrimLabels();
+});
+document.getElementById('trimEnd').addEventListener('input', (e) => {
+  const start = parseFloat(document.getElementById('trimStart').value);
+  if (parseFloat(e.target.value) < start + 0.2) e.target.value = start + 0.2;
+  updateTrimLabels();
+});
+
+function previewTrim() {
+  const videoEl = document.getElementById('editVideo');
+  const start = parseFloat(document.getElementById('trimStart').value);
+  const end = parseFloat(document.getElementById('trimEnd').value);
+  videoEl.currentTime = start;
+  videoEl.play();
+  const stopAt = () => {
+    if (videoEl.currentTime >= end) {
+      videoEl.pause();
+      videoEl.removeEventListener('timeupdate', stopAt);
+    }
+  };
+  videoEl.addEventListener('timeupdate', stopAt);
+}
+
+function updateSubtitleButton() {
+  const btn = document.getElementById('subtitleActionBtn');
+  const label = document.getElementById('subtitleStatusLabel');
+  if (hasSubtitles && subtitleLines.length > 0) {
+    btn.textContent = "Tahrirlash";
+    label.textContent = `Subtitr qo'shildi (${subtitleLines.length} qator)`;
+  } else {
+    btn.textContent = "Qo'shish";
+    label.textContent = "Avtomatik subtitr (ixtiyoriy)";
+  }
+}
+
+async function openSubtitleFlow() {
+  if (hasSubtitles && subtitleLines.length > 0) {
+    showScreen('screen-subtitle');
+    document.getElementById('subtitleLoading').style.display = 'none';
+    document.getElementById('subtitleContent').style.display = 'block';
+    renderSubtitleLines();
+    return;
+  }
+
   showScreen('screen-subtitle');
   document.getElementById('subtitleLoading').style.display = 'block';
   document.getElementById('subtitleContent').style.display = 'none';
@@ -191,21 +306,23 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
 
   try {
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', originalFile);
     fd.append('language', 'uz');
     const res = await fetch(API + '/transcribe', { method: 'POST', body: fd });
     if (!res.ok) throw new Error('Server javobi: ' + res.status);
     const data = await res.json();
     subtitleLines = data.segments;
+    hasSubtitles = subtitleLines.length > 0;
     renderSubtitleLines();
     document.getElementById('subtitleLoading').style.display = 'none';
     document.getElementById('subtitleContent').style.display = 'block';
+    updateSubtitleButton();
   } catch (err) {
     document.getElementById('subtitleLoading').style.display = 'none';
     document.getElementById('subtitleError').style.display = 'block';
     document.getElementById('subtitleError').textContent = 'Xatolik: ' + err.message;
   }
-});
+}
 
 function renderSubtitleLines() {
   const card = document.getElementById('subLinesCard');
@@ -224,7 +341,11 @@ function renderSubtitleLines() {
   });
 }
 
-function goToEffects() { showScreen('screen-effects'); }
+function confirmSubtitles() {
+  hasSubtitles = subtitleLines.length > 0;
+  updateSubtitleButton();
+  showScreen('screen-edit');
+}
 
 document.getElementById('colorChips').addEventListener('click', (e) => {
   if (!e.target.classList.contains('chip')) return;
@@ -252,6 +373,10 @@ async function startRender() {
   document.getElementById('exportError').style.display = 'none';
   const statusEl = document.getElementById('exportStatus');
 
+  const trimStart = parseFloat(document.getElementById('trimStart').value);
+  const trimEnd = parseFloat(document.getElementById('trimEnd').value);
+  const needsTrim = trimStart > 0.05 || (videoDuration - trimEnd) > 0.05;
+
   const noiseReduction = document.getElementById('noiseReduction').checked;
   const colorPreset = document.querySelector('#colorChips .chip.selected').dataset.value;
   const speeds = [
@@ -262,28 +387,49 @@ async function startRender() {
   const hasRamp = speeds.some(s => Math.abs(s - 1.0) > 0.01);
 
   try {
+    let currentFile = originalFile;
+    let currentSegments = hasSubtitles ? subtitleLines : [];
+
+    if (needsTrim) {
+      statusEl.textContent = "Video kesilmoqda...";
+      const fd = new FormData();
+      fd.append('file', currentFile);
+      fd.append('start', trimStart);
+      fd.append('end', trimEnd);
+      const res = await fetch(API + '/trim', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      currentFile = new File([blob], 'trimmed.mp4', { type: 'video/mp4' });
+      if (currentSegments.length) {
+        currentSegments = currentSegments
+          .map(s => ({ start: s.start - trimStart, end: s.end - trimStart, text: s.text }))
+          .filter(s => s.end > 0)
+          .map(s => ({ ...s, start: Math.max(0, s.start) }));
+      }
+    }
+
     statusEl.textContent = 'Subtitr va effektlar videoga yozilmoqda...';
-    const fd = new FormData();
-    fd.append('file', originalFile);
-    fd.append('segments', JSON.stringify(subtitleLines));
-    fd.append('noise_reduction', noiseReduction);
-    fd.append('color_preset', colorPreset);
-    let res = await fetch(API + '/render', { method: 'POST', body: fd });
-    if (!res.ok) throw new Error(await res.text());
-    let blob = await res.blob();
+    const fd2 = new FormData();
+    fd2.append('file', currentFile);
+    fd2.append('segments', JSON.stringify(currentSegments));
+    fd2.append('noise_reduction', noiseReduction);
+    fd2.append('color_preset', colorPreset);
+    let res2 = await fetch(API + '/render', { method: 'POST', body: fd2 });
+    if (!res2.ok) throw new Error(await res2.text());
+    let blob2 = await res2.blob();
 
     if (hasRamp) {
       statusEl.textContent = "Tezlik (speed ramp) qo'llanmoqda...";
-      const fd2 = new FormData();
-      fd2.append('file', blob, 'video.mp4');
-      fd2.append('speeds', JSON.stringify(speeds));
-      res = await fetch(API + '/speedramp', { method: 'POST', body: fd2 });
-      if (!res.ok) throw new Error(await res.text());
-      blob = await res.blob();
+      const fd3 = new FormData();
+      fd3.append('file', blob2, 'video.mp4');
+      fd3.append('speeds', JSON.stringify(speeds));
+      const res3 = await fetch(API + '/speedramp', { method: 'POST', body: fd3 });
+      if (!res3.ok) throw new Error(await res3.text());
+      blob2 = await res3.blob();
     }
 
-    resultBlob = blob;
-    const url = URL.createObjectURL(blob);
+    resultBlob = blob2;
+    const url = URL.createObjectURL(blob2);
     document.getElementById('resultVideo').src = url;
     document.getElementById('exportWorking').style.display = 'none';
     document.getElementById('exportDone').style.display = 'block';
@@ -296,25 +442,28 @@ async function startRender() {
 
 async function shareResult() {
   if (!resultBlob) return;
-  const file = new File([resultBlob], 'shradi_export.mp4', { type: 'video/mp4' });
+  const file = new File([resultBlob], 'kesim_export.mp4', { type: 'video/mp4' });
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Shradi video' });
+      await navigator.share({ files: [file], title: 'Kesim video' });
     } catch (e) { /* foydalanuvchi bekor qildi */ }
   } else {
-    // Zaxira: yuklab olish havolasi
     const a = document.createElement('a');
     a.href = URL.createObjectURL(resultBlob);
-    a.download = 'shradi_export.mp4';
+    a.download = 'kesim_export.mp4';
     a.click();
   }
 }
 
 function resetApp() {
   originalFile = null;
+  videoDuration = 0;
   subtitleLines = [];
+  hasSubtitles = false;
   resultBlob = null;
   document.getElementById('fileInput').value = '';
+  document.getElementById('editVideo').src = '';
+  updateSubtitleButton();
   showScreen('screen-home');
 }
 </script>
