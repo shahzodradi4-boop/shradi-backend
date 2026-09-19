@@ -1,10 +1,10 @@
 """
-Shradi backend — avtomatik subtitr generatsiya xizmati.
+Kesim backend — video montaj xizmati (kesish, effektlar, ixtiyoriy subtitr).
 
 Nima qiladi:
 1. Ilova orqali video/audio fayl qabul qiladi
-2. Whisper AI modeli orqali ovozni matnga aylantiradi (o'zbek tili qo'llab-quvvatlanadi)
-3. Har bir gap uchun boshlanish/tugash vaqtini va matnini JSON qilib qaytaradi
+2. Videoni kesadi (trim), rang/shovqin/tezlik effektlarini qo'llaydi
+3. Xohlasa, Whisper AI orqali ovozni matnga aylantirib, subtitr sifatida qo'shadi
 
 Ishga tushirish:
     pip install -r requirements.txt
@@ -27,8 +27,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from faster_whisper import WhisperModel
 
-app = FastAPI(title="Shradi Subtitr API")
-
+app = FastAPI(title="Kesim Montaj API")
 # Ilova (Flutter) turli manzillardan so'rov yubora olishi uchun
 app.add_middleware(
     CORSMiddleware,
@@ -60,7 +59,6 @@ def get_model() -> WhisperModel:
 @app.get("/")
 def health_check():
     return {"status": "ishlayapti", "model": MODEL_SIZE}
-
 
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), language: str = Form("uz")):
@@ -94,7 +92,6 @@ async def transcribe(file: UploadFile = File(...), language: str = Form("uz")):
         return {"segments": result}
     finally:
         os.remove(tmp_path)
-
 
 def _format_srt_timestamp(seconds: float) -> str:
     """Sekundni SRT formatiga o'giradi: 00:00:01,240"""
@@ -140,7 +137,6 @@ COLOR_PRESETS: dict[str, str | None] = {
 MIN_SPEED = 0.5
 MAX_SPEED = 2.0
 
-
 def _build_video_filter_chain(
     *,
     color_preset: str,
@@ -167,7 +163,6 @@ def _build_audio_filter_chain(*, noise_reduction: bool, speed: float) -> str:
     if speed != 1.0:
         parts.append(f"atempo={speed}")
     return ",".join(parts)
-
 
 @app.post("/render")
 async def render(
@@ -241,7 +236,6 @@ async def render(
         background=background_tasks,
     )
 
-
 def _probe_duration(path: str) -> float:
     proc = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path],
@@ -249,6 +243,63 @@ def _probe_duration(path: str) -> float:
     )
     return float(proc.stdout.strip())
 
+
+@app.post("/trim")
+async def trim(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    start: float = Form(0.0),
+    end: float = Form(...),
+):
+    """
+    Videoni [start, end] oralig'ida kesadi (soniyalarda). Montaj ilovasining
+    eng asosiy funksiyasi — kerakli qismni ajratib olish uchun.
+    """
+    if end <= start:
+        raise HTTPException(status_code=400, detail="Tugash vaqti boshlanish vaqtidan katta bo'lishi kerak")
+
+    work_id = uuid.uuid4().hex
+    tmp_dir = tempfile.gettempdir()
+    suffix = os.path.splitext(file.filename or "video.mp4")[1] or ".mp4"
+    input_path = os.path.join(tmp_dir, f"shradi_trim_in_{work_id}{suffix}")
+    output_path = os.path.join(tmp_dir, f"shradi_trim_out_{work_id}.mp4")
+
+    with open(input_path, "wb") as f:
+        f.write(await file.read())
+
+    def cleanup():
+        for p in (input_path, output_path):
+            if os.path.exists(p):
+                os.remove(p)
+
+    # -ss'ni -i'dan keyin qo'yish orqali kadrga aniq (frame-accurate) kesish
+    # olamiz; qayta kodlash (re-encode) tufayli biroz sekinroq, lekin natija
+    # aniq bo'ladi.
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-ss", str(max(0.0, start)),
+        "-to", str(end),
+        "-c:v", "libx264", "-preset", "veryfast",
+        "-c:a", "aac",
+        output_path,
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    if proc.returncode != 0:
+        cleanup()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Video kesishda xatolik: {proc.stderr[-500:]}",
+        )
+
+    background_tasks.add_task(cleanup)
+    return FileResponse(
+        output_path,
+        media_type="video/mp4",
+        filename="kesim_trim.mp4",
+        background=background_tasks,
+    )
 
 @app.post("/combine")
 async def combine(
@@ -331,7 +382,6 @@ async def combine(
         filename="shradi_combined.mp4",
         background=background_tasks,
     )
-
 
 @app.post("/speedramp")
 async def speedramp(
