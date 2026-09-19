@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from faster_whisper import WhisperModel
 
 app = FastAPI(title="Kesim Montaj API")
+
 # Ilova (Flutter) turli manzillardan so'rov yubora olishi uchun
 app.add_middleware(
     CORSMiddleware,
@@ -59,6 +60,7 @@ def get_model() -> WhisperModel:
 @app.get("/")
 def health_check():
     return {"status": "ishlayapti", "model": MODEL_SIZE}
+
 
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), language: str = Form("uz")):
@@ -137,16 +139,76 @@ COLOR_PRESETS: dict[str, str | None] = {
 MIN_SPEED = 0.5
 MAX_SPEED = 2.0
 
+# Aspect ratio (o'lcham nisbati) uchun tayyor variantlar — CapCut'dagi kabi.
+# None = original, o'zgartirilmaydi. Boshqalari markazdan kesib (crop),
+# kerakli nisbatga keltiradi.
+ASPECT_RATIOS: dict[str, tuple[int, int] | None] = {
+    "original": None,
+    "9:16": (9, 16),
+    "1:1": (1, 1),
+    "16:9": (16, 9),
+    "4:5": (4, 5),
+}
+
+# Matn overlay joylashuvi — drawtext filtridagi y= ifodasi.
+TEXT_POSITIONS: dict[str, str] = {
+    "top": "h*0.08",
+    "middle": "(h-text_h)/2",
+    "bottom": "h*0.85",
+}
+
+# Debian asosidagi konteynerlarda (Render shu turdagi image ishlatadi)
+# odatda mavjud bo'ladigan shrift — matn overlay uchun.
+TEXT_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+
+def _escape_drawtext(text: str) -> str:
+    # drawtext filtri uchun maxsus belgilarni ekranlaymiz
+    return (
+        text.replace("\\", "\\\\")
+        .replace(":", "\\:")
+        .replace("'", "\\'")
+        .replace("%", "\\%")
+    )
+
 def _build_video_filter_chain(
     *,
     color_preset: str,
     srt_path: str | None,
     speed: float,
+    aspect_ratio: str = "original",
+    brightness: float = 0.0,
+    contrast: float = 1.0,
+    saturation: float = 1.0,
+    overlay_text: str = "",
+    overlay_position: str = "bottom",
 ) -> str:
     parts: list[str] = []
+
+    ratio = ASPECT_RATIOS.get(aspect_ratio)
+    if ratio:
+        rw, rh = ratio
+        r = rw / rh
+        parts.append(
+            f"crop='if(gt(iw/ih,{r}),ih*{r},iw)':'if(gt(iw/ih,{r}),ih,iw/{r})'"
+        )
+
     color_filter = COLOR_PRESETS.get(color_preset)
     if color_filter:
         parts.append(color_filter)
+
+    if brightness != 0.0 or contrast != 1.0 or saturation != 1.0:
+        parts.append(f"eq=brightness={brightness}:contrast={contrast}:saturation={saturation}")
+
+    if overlay_text:
+        escaped = _escape_drawtext(overlay_text)
+        y_expr = TEXT_POSITIONS.get(overlay_position, TEXT_POSITIONS["bottom"])
+        parts.append(
+            f"drawtext=fontfile={TEXT_FONT_PATH}:text='{escaped}':"
+            f"fontcolor=white:fontsize=42:borderw=3:bordercolor=black@0.8:"
+            f"x=(w-text_w)/2:y={y_expr}"
+        )
+
     if srt_path:
         escaped_srt = srt_path.replace("\\", "\\\\").replace(":", "\\:")
         parts.append(f"subtitles={escaped_srt}:force_style='{SUBTITLE_STYLE}'")
@@ -172,11 +234,17 @@ async def render(
     noise_reduction: bool = Form(False),
     color_preset: str = Form("original"),
     speed: float = Form(1.0),
+    aspect_ratio: str = Form("original"),
+    brightness: float = Form(0.0),
+    contrast: float = Form(1.0),
+    saturation: float = Form(1.0),
+    overlay_text: str = Form(""),
+    overlay_position: str = Form("bottom"),
 ):
     """
     Video faylni qabul qilib, tanlangan barcha effektlarni (subtitr,
-    shovqin tozalash, rang uslubi, tezlik) qo'llab, tayyor video faylni
-    qaytaradi.
+    shovqin tozalash, rang uslubi, moslash, o'lcham nisbati, matn, tezlik)
+    qo'llab, tayyor video faylni qaytaradi.
     """
     try:
         parsed_segments = json.loads(segments)
@@ -185,7 +253,12 @@ async def render(
 
     if color_preset not in COLOR_PRESETS:
         raise HTTPException(status_code=400, detail=f"Noma'lum rang uslubi: {color_preset}")
+    if aspect_ratio not in ASPECT_RATIOS:
+        raise HTTPException(status_code=400, detail=f"Noma'lum o'lcham nisbati: {aspect_ratio}")
     speed = max(MIN_SPEED, min(MAX_SPEED, speed))
+    brightness = max(-1.0, min(1.0, brightness))
+    contrast = max(0.0, min(3.0, contrast))
+    saturation = max(0.0, min(3.0, saturation))
 
     work_id = uuid.uuid4().hex
     tmp_dir = tempfile.gettempdir()
@@ -202,7 +275,17 @@ async def render(
         with open(srt_path, "w", encoding="utf-8") as f:
             f.write(_segments_to_srt(parsed_segments))
 
-    vf = _build_video_filter_chain(color_preset=color_preset, srt_path=srt_path, speed=speed)
+    vf = _build_video_filter_chain(
+        color_preset=color_preset,
+        srt_path=srt_path,
+        speed=speed,
+        aspect_ratio=aspect_ratio,
+        brightness=brightness,
+        contrast=contrast,
+        saturation=saturation,
+        overlay_text=overlay_text,
+        overlay_position=overlay_position,
+    )
     af = _build_audio_filter_chain(noise_reduction=noise_reduction, speed=speed)
 
     cmd = ["ffmpeg", "-y", "-i", input_path]
@@ -235,6 +318,75 @@ async def render(
         filename="shradi_export.mp4",
         background=background_tasks,
     )
+
+
+@app.post("/mix_audio")
+async def mix_audio(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    audio: UploadFile = File(...),
+    music_volume: float = Form(0.5),
+    original_volume: float = Form(1.0),
+):
+    """
+    Videoga fon musiqasi qo'shadi — video o'zining ovozi bilan birga,
+    yuklangan audio fayl bilan aralashtiriladi (mix). Video davomiyligidan
+    uzun bo'lsa, musiqa avtomatik qisqartiriladi.
+    """
+    music_volume = max(0.0, min(2.0, music_volume))
+    original_volume = max(0.0, min(2.0, original_volume))
+
+    work_id = uuid.uuid4().hex
+    tmp_dir = tempfile.gettempdir()
+    v_suffix = os.path.splitext(file.filename or "video.mp4")[1] or ".mp4"
+    a_suffix = os.path.splitext(audio.filename or "music.mp3")[1] or ".mp3"
+    video_path = os.path.join(tmp_dir, f"shradi_mix_v_{work_id}{v_suffix}")
+    audio_path = os.path.join(tmp_dir, f"shradi_mix_a_{work_id}{a_suffix}")
+    output_path = os.path.join(tmp_dir, f"shradi_mix_out_{work_id}.mp4")
+
+    with open(video_path, "wb") as f:
+        f.write(await file.read())
+    with open(audio_path, "wb") as f:
+        f.write(await audio.read())
+
+    def cleanup():
+        for p in (video_path, audio_path, output_path):
+            if os.path.exists(p):
+                os.remove(p)
+
+    filter_complex = (
+        f"[0:a]volume={original_volume}[a0];"
+        f"[1:a]volume={music_volume}[a1];"
+        f"[a0][a1]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+    )
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-i", audio_path,
+        "-filter_complex", filter_complex,
+        "-map", "0:v",
+        "-map", "[aout]",
+        "-c:v", "copy",
+        "-shortest",
+        output_path,
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    if proc.returncode != 0:
+        cleanup()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Musiqa qo'shishda xatolik: {proc.stderr[-500:]}",
+        )
+
+    background_tasks.add_task(cleanup)
+    return FileResponse(
+        output_path,
+        media_type="video/mp4",
+        filename="kesim_music.mp4",
+        background=background_tasks,
+    )
+
 
 def _probe_duration(path: str) -> float:
     proc = subprocess.run(
@@ -300,6 +452,7 @@ async def trim(
         filename="kesim_trim.mp4",
         background=background_tasks,
     )
+
 
 @app.post("/combine")
 async def combine(
@@ -382,6 +535,7 @@ async def combine(
         filename="shradi_combined.mp4",
         background=background_tasks,
     )
+
 
 @app.post("/speedramp")
 async def speedramp(
